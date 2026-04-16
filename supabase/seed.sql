@@ -1,0 +1,3 @@
+-- Seed data for development
+-- Will be implemented in Phase 3
+-- See PROJECT_REQUIREMENTS.md section 5 for seed data spec
