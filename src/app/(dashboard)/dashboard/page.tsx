@@ -1,8 +1,22 @@
 import { requireUser } from '@/lib/supabase/auth';
+import {
+  getDashboardMetrics,
+  getMonthlyStats,
+  getRecentTransactions,
+} from '@/lib/db/queries';
+import { SummaryCards } from '@/components/dashboard/summary-cards';
+import { CashFlowChart } from '@/components/dashboard/cash-flow-chart';
+import { RecentTransactionsWidget } from '@/components/dashboard/recent-transactions-widget';
 
 export default async function DashboardPage() {
   const user = await requireUser();
   const displayName = user.email?.split('@')[0] ?? 'User';
+
+  const [metrics, stats, recentTransactions] = await Promise.all([
+    getDashboardMetrics(),
+    getMonthlyStats(),
+    getRecentTransactions(5),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -13,46 +27,20 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {/* Summary cards — will be implemented in Phase 5 */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: 'Total Balance', value: 'R$ 0,00', sub: 'Across all accounts' },
-          { label: 'Income (month)', value: 'R$ 0,00', sub: 'This month' },
-          { label: 'Expenses (month)', value: 'R$ 0,00', sub: 'This month' },
-          { label: 'Budget Usage', value: '0%', sub: 'Of planned budget' },
-        ].map((card) => (
-          <div
-            key={card.label}
-            className="rounded-xl border bg-card p-5 shadow-sm"
-          >
-            <p className="text-sm font-medium text-muted-foreground">
-              {card.label}
-            </p>
-            <p className="mt-1 text-2xl font-bold">{card.value}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{card.sub}</p>
-          </div>
-        ))}
-      </div>
+      <SummaryCards
+        totalBalance={metrics.totalBalance}
+        monthlyIncome={metrics.monthlyIncome}
+        monthlyExpense={metrics.monthlyExpense}
+      />
 
-      {/* Charts and recent transactions — will be implemented in Phase 5+ */}
       <div className="grid gap-4 lg:grid-cols-7">
         <div className="rounded-xl border bg-card p-5 shadow-sm lg:col-span-4">
-          <h2 className="text-base font-semibold">Spending Overview</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Charts will be added in Phase 5.
-          </p>
-          <div className="mt-4 flex h-48 items-center justify-center rounded-lg bg-muted/50">
-            <span className="text-muted-foreground">📊 Chart area</span>
-          </div>
+          <h2 className="text-base font-semibold mb-4">Cash Flow (Last 6 Months)</h2>
+          <CashFlowChart data={stats} />
         </div>
         <div className="rounded-xl border bg-card p-5 shadow-sm lg:col-span-3">
-          <h2 className="text-base font-semibold">Recent Transactions</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Transaction list will be added in Phase 6.
-          </p>
-          <div className="mt-4 flex h-48 items-center justify-center rounded-lg bg-muted/50">
-            <span className="text-muted-foreground">📋 Transactions</span>
-          </div>
+          <h2 className="text-base font-semibold mb-4">Recent Transactions</h2>
+          <RecentTransactionsWidget transactions={recentTransactions} />
         </div>
       </div>
     </div>
