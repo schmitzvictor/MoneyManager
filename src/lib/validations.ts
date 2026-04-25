@@ -62,3 +62,49 @@ export const ruleSchema = z.object({
 });
 
 export type RuleFormValues = z.input<typeof ruleSchema>;
+
+// ============================================================
+// BUDGET ITEMS
+// ============================================================
+export const budgetItemSchema = z.object({
+  category_id: z.string().uuid('Select a category'),
+  planned_amount: z.number().min(0, 'Amount must be non-negative'),
+});
+
+export type BudgetItemFormValues = z.input<typeof budgetItemSchema>;
+
+// ============================================================
+// GOALS
+// ============================================================
+export const goalSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  target_amount: z.number().positive('Target must be positive'),
+  target_date: z.string().nullable().optional(),
+  icon: z.string().optional(),
+  color: z.string().optional(),
+});
+
+export type GoalFormValues = z.input<typeof goalSchema>;
+
+export const contributeSchema = z.object({
+  amount: z.number().positive('Amount must be positive'),
+});
+
+export type ContributeFormValues = z.input<typeof contributeSchema>;
+
+// ============================================================
+// RECURRING TRANSACTIONS
+// ============================================================
+export const recurringSchema = z.object({
+  account_id: z.string().uuid('Select an account'),
+  category_id: z.string().uuid('Select a category').nullable().optional(),
+  type: z.enum(['income', 'expense']),
+  amount: z.number().positive('Amount must be positive'),
+  description: z.string().max(255).default(''),
+  frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'yearly']),
+  start_date: z.string().min(1, 'Start date is required'),
+  end_date: z.string().nullable().optional(),
+  auto_create: z.boolean().default(false),
+});
+
+export type RecurringFormValues = z.input<typeof recurringSchema>;

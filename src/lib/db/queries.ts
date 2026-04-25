@@ -227,3 +227,146 @@ export async function getRules() {
 
   return data || [];
 }
+
+// ============================================================
+// BUDGETS
+// ============================================================
+
+/**
+ * Get or create a budget_month record for a given YYYY-MM string.
+ */
+export async function getOrCreateBudgetMonth(month: string) {
+  const supabase = await getClient();
+
+  // Try to find an existing one
+  const { data: existing } = await supabase
+    .from('budget_months')
+    .select('*')
+    .eq('month', month)
+    .maybeSingle();
+
+  if (existing) return existing;
+
+  // Create a new one
+  const { data: created, error } = await supabase
+    .from('budget_months')
+    .insert({ month })
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return created;
+}
+
+/**
+ * Get budget items (with category info) for a given YYYY-MM month.
+ */
+export async function getBudgetItems(month: string) {
+  const supabase = await getClient();
+
+  const { data: budgetMonth } = await supabase
+    .from('budget_months')
+    .select('id')
+    .eq('month', month)
+    .maybeSingle();
+
+  if (!budgetMonth) return [];
+
+  const { data, error } = await supabase
+    .from('budget_items')
+    .select('*, categories(name, icon, color, kind)')
+    .eq('budget_month_id', budgetMonth.id)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Get actual spending by category for a given YYYY-MM month.
+ * Returns a Map of category_id -> total spent.
+ */
+export async function getActualSpendingByCategory(month: string) {
+  const supabase = await getClient();
+
+  const [year, m] = month.split('-');
+  const startDate = `${year}-${m}-01`;
+  // End of month: create next month's 1st and subtract 1 day
+  const nextMonth = new Date(Number(year), Number(m), 1);
+  const endDate = new Date(nextMonth.getTime() - 86400000).toISOString().split('T')[0];
+
+  const { data } = await supabase
+    .from('transactions')
+    .select('category_id, amount')
+    .eq('type', 'expense')
+    .neq('status', 'planned')
+    .gte('date', startDate)
+    .lte('date', endDate);
+
+  const map = new Map<string, number>();
+  data?.forEach((tx) => {
+    if (tx.category_id) {
+      map.set(tx.category_id, (map.get(tx.category_id) || 0) + Number(tx.amount));
+    }
+  });
+  return map;
+}
+
+// ============================================================
+// GOALS
+// ============================================================
+
+export async function getGoals() {
+  const supabase = await getClient();
+  const { data, error } = await supabase
+    .from('goals')
+    .select('*')
+    .eq('is_archived', false)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getGoal(id: string) {
+  const supabase = await getClient();
+  const { data, error } = await supabase
+    .from('goals')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// ============================================================
+// RECURRING TRANSACTIONS
+// ============================================================
+
+export async function getRecurringSeries() {
+  const supabase = await getClient();
+  const { data, error } = await supabase
+    .from('recurring_series')
+    .select('*, accounts(name, color), categories(name, icon, color)')
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getUpcomingRecurring() {
+  const supabase = await getClient();
+  const today = new Date().toISOString().split('T')[0];
+  const in30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('recurring_series')
+    .select('*, accounts(name, color), categories(name, icon, color)')
+    .gte('next_occurrence', today)
+    .lte('next_occurrence', in30)
+    .order('next_occurrence', { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
