@@ -15,6 +15,8 @@ interface ImportPreviewTableProps {
   filename: string;
   format: 'csv' | 'ofx';
   data: ParsedTransaction[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  categories: any[];
   onCancel: () => void;
 }
 
@@ -23,6 +25,7 @@ export function ImportPreviewTable({
   filename,
   format,
   data: initialData,
+  categories,
   onCancel,
 }: ImportPreviewTableProps) {
   const router = useRouter();
@@ -104,6 +107,7 @@ export function ImportPreviewTable({
         description: d.description,
         amount: d.amount,
         type: d.type,
+        categoryId: d.categoryId,
       }));
 
     try {
@@ -163,6 +167,7 @@ export function ImportPreviewTable({
               </th>
               <th className="p-3 w-28">Date</th>
               <th className="p-3">Description</th>
+              <th className="p-3 w-48">Category</th>
               <th className="p-3 w-32 text-right">Amount</th>
             </tr>
           </thead>
@@ -194,6 +199,18 @@ export function ImportPreviewTable({
                       onChange={(e) => updateRow(row.id, 'description', e.target.value)}
                       className="h-8 text-xs px-2"
                     />
+                  </td>
+                  <td className="p-3">
+                    <select
+                      className="flex h-8 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      value={row.categoryId || ''}
+                      onChange={(e) => updateRow(row.id, 'categoryId', e.target.value)}
+                    >
+                      <option value="">Uncategorized</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
                   </td>
                   <td className="p-3 text-right">
                     <div className="flex items-center justify-end gap-2">

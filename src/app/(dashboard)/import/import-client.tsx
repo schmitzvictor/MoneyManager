@@ -5,12 +5,18 @@ import { ImportDropzone } from '@/components/import/import-dropzone';
 import { ImportPreviewTable } from '@/components/import/import-preview-table';
 import { ParsedTransaction } from '@/lib/import';
 
+import { applyRulesBulk } from '@/lib/rules/engine';
+
 interface ImportClientProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   accounts: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  categories: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rules: any[];
 }
 
-export function ImportClient({ accounts }: ImportClientProps) {
+export function ImportClient({ accounts, categories, rules }: ImportClientProps) {
   const [parsedData, setParsedData] = useState<{
     accountId: string;
     filename: string;
@@ -25,6 +31,7 @@ export function ImportClient({ accounts }: ImportClientProps) {
         filename={parsedData.filename}
         format={parsedData.format}
         data={parsedData.transactions}
+        categories={categories}
         onCancel={() => setParsedData(null)}
       />
     );
@@ -34,7 +41,9 @@ export function ImportClient({ accounts }: ImportClientProps) {
     <ImportDropzone
       accounts={accounts}
       onParsed={(accountId, filename, format, transactions) => {
-        setParsedData({ accountId, filename, format, transactions });
+        // Apply rules to auto-categorize
+        const categorized = applyRulesBulk(transactions, rules);
+        setParsedData({ accountId, filename, format, transactions: categorized as ParsedTransaction[] });
       }}
     />
   );

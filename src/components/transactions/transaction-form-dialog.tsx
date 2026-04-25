@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { transactionSchema, type TransactionFormValues } from '@/lib/validations';
 import { createTransaction, updateTransaction } from '@/lib/actions/transactions';
+import { applyRules } from '@/lib/rules/engine';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +18,7 @@ import {
   DialogTrigger,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { createRule } from '@/lib/actions/rules';
 import {
   Select,
   SelectContent,
@@ -33,6 +35,8 @@ interface TransactionFormDialogProps {
   accounts: any[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   categories: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rules?: any[];
   trigger?: React.ReactNode;
 }
 
@@ -40,6 +44,7 @@ export function TransactionFormDialog({
   transaction,
   accounts,
   categories,
+  rules = [],
   trigger,
 }: TransactionFormDialogProps) {
   const [open, setOpen] = useState(false);
@@ -64,13 +69,51 @@ export function TransactionFormDialog({
     },
   });
 
+
   const watchType = form.watch('type');
+  const watchDesc = form.watch('description');
 
   // Filter categories based on transaction type
   const filteredCategories = categories.filter((c) => {
     if (watchType === 'transfer') return c.kind === 'transfer';
     return c.kind === watchType;
   });
+
+  // Auto-categorize based on rules
+  useEffect(() => {
+    if (!isEdit && watchDesc && rules.length > 0) {
+      // Only auto-categorize if the user hasn't manually selected one
+      const currentCat = form.getValues('category_id');
+      if (!currentCat) {
+        const matchedCat = applyRules({ description: watchDesc }, rules);
+        if (matchedCat) {
+          form.setValue('category_id', matchedCat, { shouldValidate: true, shouldDirty: true });
+        }
+      }
+    }
+  }, [watchDesc, isEdit, rules, form]);
+
+  const watchCat = form.watch('category_id');
+
+  // Track if a rule was recently created to show success state
+  const [ruleCreated, setRuleCreated] = useState(false);
+
+  async function handleCreateRule() {
+    if (!watchDesc || !watchCat) return;
+    const res = await createRule({
+      name: `Auto: ${watchDesc.substring(0, 20)}`,
+      field: 'description',
+      operator: 'contains',
+      value: watchDesc,
+      category_id: watchCat,
+      priority: 0, // will be auto-assigned next priority
+      is_active: true,
+    });
+    if (res.success) {
+      setRuleCreated(true);
+      setTimeout(() => setRuleCreated(false), 3000);
+    }
+  }
 
   async function onSubmit(values: TransactionFormValues) {
     setServerError(null);
@@ -228,6 +271,21 @@ export function TransactionFormDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {watchDesc && watchCat && (
+                <div className="pt-1">
+                  {ruleCreated ? (
+                    <span className="text-xs text-emerald-600 font-medium">Rule created!</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleCreateRule}
+                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                    >
+                      <Plus className="h-3 w-3" /> Create rule for "{watchDesc.substring(0,15)}{watchDesc.length > 15 ? '...' : ''}"
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

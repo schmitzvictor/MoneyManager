@@ -19,9 +19,11 @@ interface TransactionActionsProps {
   accounts: any[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   categories: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rules?: any[];
 }
 
-export function TransactionActions({ transaction, accounts, categories }: TransactionActionsProps) {
+export function TransactionActions({ transaction, accounts, categories, rules }: TransactionActionsProps) {
   async function handleDuplicate() {
     await duplicateTransaction(transaction.id);
   }
@@ -41,6 +43,7 @@ export function TransactionActions({ transaction, accounts, categories }: Transa
           transaction={transaction}
           accounts={accounts}
           categories={categories}
+          rules={rules}
           trigger={
             <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
               Edit

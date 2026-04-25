@@ -212,3 +212,18 @@ export async function getRecentTransactions(limit = 5) {
     
   return data || [];
 }
+
+// ============================================================
+// RULES
+// ============================================================
+
+export async function getRules() {
+  const supabase = await getClient();
+  const { data } = await supabase
+    .from('rules')
+    .select('*, categories(name, color, icon)')
+    .order('priority', { ascending: true })
+    .order('created_at', { ascending: false });
+
+  return data || [];
+}

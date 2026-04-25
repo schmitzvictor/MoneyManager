@@ -1,4 +1,4 @@
-import { getTransactions, getAccounts, getCategories } from '@/lib/db/queries';
+import { getTransactions, getAccounts, getCategories, getRules } from '@/lib/db/queries';
 import { TransactionFormDialog } from '@/components/transactions/transaction-form-dialog';
 import { TransactionActions } from '@/components/transactions/transaction-actions';
 import { TransactionFilters } from '@/components/transactions/transaction-filters';
@@ -28,7 +28,7 @@ interface PageProps {
 
 export default async function TransactionsPage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const [{ data: transactions, count }, accounts, categories] = await Promise.all([
+  const [{ data: transactions, count }, accounts, categories, rules] = await Promise.all([
     getTransactions({
       search: params.search,
       accountId: params.account,
@@ -40,6 +40,7 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
     }),
     getAccounts(),
     getCategories(),
+    getRules(),
   ]);
 
   const TypeIcon = {
@@ -63,7 +64,7 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
             {count ?? 0} transaction{(count ?? 0) !== 1 ? 's' : ''}
           </p>
         </div>
-        <TransactionFormDialog accounts={accounts} categories={categories} />
+        <TransactionFormDialog accounts={accounts} categories={categories} rules={rules} />
       </div>
 
       <TransactionFilters accounts={accounts} categories={categories} />
@@ -146,6 +147,7 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
                         transaction={tx}
                         accounts={accounts}
                         categories={categories}
+                        rules={rules}
                       />
                     </TableCell>
                   </TableRow>

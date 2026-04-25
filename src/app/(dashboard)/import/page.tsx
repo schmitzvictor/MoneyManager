@@ -1,8 +1,12 @@
-import { getAccounts } from '@/lib/db/queries';
+import { getAccounts, getCategories, getRules } from '@/lib/db/queries';
 import { ImportClient } from './import-client';
 
 export default async function ImportPage() {
-  const accounts = await getAccounts();
+  const [accounts, categories, rules] = await Promise.all([
+    getAccounts(),
+    getCategories(),
+    getRules()
+  ]);
 
   return (
     <div className="space-y-6">
@@ -14,7 +18,7 @@ export default async function ImportPage() {
       </div>
 
       <div className="rounded-xl border bg-card p-6 shadow-sm">
-        <ImportClient accounts={accounts} />
+        <ImportClient accounts={accounts} categories={categories} rules={rules} />
       </div>
     </div>
   );

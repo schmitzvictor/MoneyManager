@@ -47,3 +47,18 @@ export const transactionSchema = z.object({
 });
 
 export type TransactionFormValues = z.input<typeof transactionSchema>;
+
+// ============================================================
+// RULES
+// ============================================================
+export const ruleSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  field: z.string().default('description'),
+  operator: z.enum(['contains', 'equals', 'starts_with']),
+  value: z.string().min(1, 'Value is required').max(255),
+  category_id: z.string().uuid('Select a category'),
+  priority: z.number().default(0),
+  is_active: z.boolean().default(true),
+});
+
+export type RuleFormValues = z.input<typeof ruleSchema>;

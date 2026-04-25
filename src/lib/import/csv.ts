@@ -8,6 +8,7 @@ export interface ParsedTransaction {
   amount: number;
   type: 'income' | 'expense';
   status: 'posted' | 'pending';
+  categoryId?: string;
   raw: any; // Raw parsed row for debugging
 }
 
