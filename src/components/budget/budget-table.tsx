@@ -72,7 +72,8 @@ export function BudgetTable({ month, lines, budgetItems, allCategories }: Budget
   };
 
   return (
-    <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+    <div className="rounded-xl border bg-card shadow-sm overflow-hidden overflow-x-auto">
+      <div className="min-w-[640px]">
       {/* Header */}
       <div className="grid grid-cols-[1fr_120px_120px_120px_80px_60px] gap-2 px-4 py-3 bg-muted text-xs font-medium text-muted-foreground border-b">
         <div>Category</div>
@@ -222,6 +223,7 @@ export function BudgetTable({ month, lines, budgetItems, allCategories }: Budget
           </Button>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import { requireUser } from '@/lib/supabase/auth';
+import { getAccounts, getCategories } from '@/lib/db/queries';
 import { Sidebar } from '@/components/layout/sidebar';
 import { AppHeader } from '@/components/layout/app-header';
 import { QuickAddFab } from '@/components/layout/quick-add-fab';
+import { QuickAddSheet } from '@/components/layout/quick-add-sheet';
 
 export default async function DashboardLayout({
   children,
@@ -9,6 +11,7 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const user = await requireUser();
+  const [accounts, categories] = await Promise.all([getAccounts(), getCategories()]);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -26,6 +29,9 @@ export default async function DashboardLayout({
 
       {/* Quick Add floating button */}
       <QuickAddFab />
+
+      {/* Quick Add slide-over sheet */}
+      <QuickAddSheet accounts={accounts} categories={categories} />
     </div>
   );
 }
