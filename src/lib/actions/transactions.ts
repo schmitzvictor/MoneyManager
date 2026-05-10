@@ -7,6 +7,9 @@ import { requireUserId } from '@/lib/supabase/auth';
 import { transactionSchema, type TransactionFormValues } from '@/lib/validations';
 import { normalizeMerchantName } from '@/lib/utils/hashes';
 
+// Use the inferred return type so we never need `any` for the client
+type SupabaseServerClient = ReturnType<typeof createClient>;
+
 export async function createTransaction(values: TransactionFormValues) {
   const userId = await requireUserId();
   const parsed = transactionSchema.safeParse(values);
@@ -41,7 +44,7 @@ export async function createTransaction(values: TransactionFormValues) {
   });
 
   if (error) {
-    return { error: { _form: [error.message] } };
+    return { error: { _form: ['Failed to create transaction. Please try again.'] } };
   }
 
   // Update account balance
@@ -65,7 +68,7 @@ export async function createTransaction(values: TransactionFormValues) {
 }
 
 export async function updateTransaction(id: string, values: TransactionFormValues) {
-  await requireUserId();
+  const userId = await requireUserId();
   const parsed = transactionSchema.safeParse(values);
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors };
@@ -93,10 +96,11 @@ export async function updateTransaction(id: string, values: TransactionFormValue
       date: parsed.data.date,
       transfer_account_id: parsed.data.transfer_account_id || null,
     })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId); // ownership check
 
   if (error) {
-    return { error: { _form: [error.message] } };
+    return { error: { _form: ['Failed to update transaction. Please try again.'] } };
   }
 
   revalidatePath('/transactions');
@@ -106,15 +110,19 @@ export async function updateTransaction(id: string, values: TransactionFormValue
 }
 
 export async function deleteTransaction(id: string) {
-  await requireUserId();
+  const userId = await requireUserId();
 
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const { error } = await supabase.from('transactions').delete().eq('id', id);
+  const { error } = await supabase
+    .from('transactions')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId); // ownership check
 
   if (error) {
-    return { error: error.message };
+    return { error: 'Failed to delete transaction. Please try again.' };
   }
 
   revalidatePath('/transactions');
@@ -129,15 +137,16 @@ export async function duplicateTransaction(id: string) {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  // Fetch original transaction
+  // Fetch original transaction — scoped to the current user for ownership check
   const { data: original, error: fetchError } = await supabase
     .from('transactions')
     .select('*')
     .eq('id', id)
+    .eq('user_id', userId) // ownership check
     .single();
 
   if (fetchError || !original) {
-    return { error: 'Transaction not found' };
+    return { error: 'Transaction not found.' };
   }
 
   // Insert duplicate with today's date
@@ -159,7 +168,7 @@ export async function duplicateTransaction(id: string) {
   });
 
   if (error) {
-    return { error: error.message };
+    return { error: 'Failed to duplicate transaction. Please try again.' };
   }
 
   revalidatePath('/transactions');
@@ -170,28 +179,35 @@ export async function duplicateTransaction(id: string) {
 // ============================================================
 // HELPERS
 // ============================================================
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateAccountBalance(supabase: any, accountId: string, type: string, amount: number) {
+
+/**
+ * Atomically adjust an account's current_balance by a signed delta.
+ *
+ * Delegates to the `adjust_account_balance` Postgres RPC function
+ * (migration 00002_atomic_rpc.sql) which performs a single UPDATE,
+ * eliminating the SELECT → UPDATE race condition.
+ *
+ * delta > 0 = credit (income),  delta < 0 = debit (expense)
+ */
+async function updateAccountBalance(
+  supabase: SupabaseServerClient,
+  accountId: string,
+  type: string,
+  amount: number
+): Promise<void> {
   const delta = type === 'income' ? amount : -amount;
-
-  const { data: account } = await supabase
-    .from('accounts')
-    .select('current_balance')
-    .eq('id', accountId)
-    .single();
-
-  if (account) {
-    await supabase
-      .from('accounts')
-      .update({ current_balance: Number(account.current_balance) + delta })
-      .eq('id', accountId);
-  }
+  await supabase.rpc('adjust_account_balance', {
+    p_account_id: accountId,
+    p_delta: delta,
+  });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/**
+ * Atomically upsert a merchant profile using INSERT ... ON CONFLICT.
+ * Delegates to `upsert_merchant_profile` Postgres RPC function.
+ */
 async function upsertMerchantProfile(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any,
+  supabase: SupabaseServerClient,
   userId: string,
   data: {
     normalizedName: string;
@@ -200,35 +216,13 @@ async function upsertMerchantProfile(
     accountId: string;
     amount: number;
   }
-) {
-  const { data: existing } = await supabase
-    .from('merchant_profiles')
-    .select('id, usage_count')
-    .eq('user_id', userId)
-    .eq('normalized_name', data.normalizedName)
-    .single();
-
-  if (existing) {
-    await supabase
-      .from('merchant_profiles')
-      .update({
-        default_category_id: data.categoryId,
-        default_account_id: data.accountId,
-        last_amount: data.amount,
-        usage_count: existing.usage_count + 1,
-        last_used_at: new Date().toISOString(),
-      })
-      .eq('id', existing.id);
-  } else {
-    await supabase.from('merchant_profiles').insert({
-      user_id: userId,
-      normalized_name: data.normalizedName,
-      display_name: data.displayName,
-      default_category_id: data.categoryId,
-      default_account_id: data.accountId,
-      last_amount: data.amount,
-      usage_count: 1,
-      last_used_at: new Date().toISOString(),
-    });
-  }
+): Promise<void> {
+  await supabase.rpc('upsert_merchant_profile', {
+    p_user_id: userId,
+    p_normalized_name: data.normalizedName,
+    p_display_name: data.displayName,
+    p_category_id: data.categoryId ?? null,
+    p_account_id: data.accountId,
+    p_last_amount: data.amount,
+  });
 }

@@ -29,9 +29,7 @@ export async function createAccount(values: AccountFormValues) {
     due_day: parsed.data.due_day || null,
   });
 
-  if (error) {
-    return { error: { _form: [error.message] } };
-  }
+  if (error) return { error: { _form: ['Failed to create account. Please try again.'] } };
 
   revalidatePath('/accounts');
   revalidatePath('/dashboard');
@@ -39,7 +37,7 @@ export async function createAccount(values: AccountFormValues) {
 }
 
 export async function updateAccount(id: string, values: AccountFormValues) {
-  await requireUserId();
+  const userId = await requireUserId();
   const parsed = accountSchema.safeParse(values);
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors };
@@ -59,10 +57,11 @@ export async function updateAccount(id: string, values: AccountFormValues) {
       closing_day: parsed.data.closing_day || null,
       due_day: parsed.data.due_day || null,
     })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId); // ownership check
 
   if (error) {
-    return { error: { _form: [error.message] } };
+    return { error: { _form: ['Failed to update account. Please try again.'] } };
   }
 
   revalidatePath('/accounts');
@@ -71,15 +70,19 @@ export async function updateAccount(id: string, values: AccountFormValues) {
 }
 
 export async function deleteAccount(id: string) {
-  await requireUserId();
+  const userId = await requireUserId();
 
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const { error } = await supabase.from('accounts').delete().eq('id', id);
+  const { error } = await supabase
+    .from('accounts')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId); // ownership check
 
   if (error) {
-    return { error: error.message };
+    return { error: 'Failed to delete account. Please try again.' };
   }
 
   revalidatePath('/accounts');
@@ -88,7 +91,7 @@ export async function deleteAccount(id: string) {
 }
 
 export async function archiveAccount(id: string, archived: boolean) {
-  await requireUserId();
+  const userId = await requireUserId();
 
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
@@ -96,10 +99,11 @@ export async function archiveAccount(id: string, archived: boolean) {
   const { error } = await supabase
     .from('accounts')
     .update({ is_archived: archived })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId); // ownership check
 
   if (error) {
-    return { error: error.message };
+    return { error: 'Failed to update account. Please try again.' };
   }
 
   revalidatePath('/accounts');

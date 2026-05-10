@@ -36,7 +36,7 @@ export async function createGoal(values: GoalFormValues) {
 }
 
 export async function updateGoal(id: string, values: GoalFormValues) {
-  await requireUserId();
+  const userId = await requireUserId();
   const parsed = goalSchema.safeParse(values);
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors };
@@ -52,27 +52,33 @@ export async function updateGoal(id: string, values: GoalFormValues) {
       icon: parsed.data.icon || null,
       color: parsed.data.color || null,
     })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId); // ownership check
 
-  if (error) return { error: { _form: [error.message] } };
+  if (error) return { error: { _form: ['Failed to update goal. Please try again.'] } };
 
   revalidatePath('/goals');
   return { success: true };
 }
 
 export async function deleteGoal(id: string) {
-  await requireUserId();
+  const userId = await requireUserId();
   const supabase = await getAuthClient();
 
-  const { error } = await supabase.from('goals').delete().eq('id', id);
-  if (error) return { error: error.message };
+  const { error } = await supabase
+    .from('goals')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId); // ownership check
+
+  if (error) return { error: 'Failed to delete goal. Please try again.' };
 
   revalidatePath('/goals');
   return { success: true };
 }
 
 export async function contributeToGoal(id: string, values: ContributeFormValues) {
-  await requireUserId();
+  const userId = await requireUserId();
   const parsed = contributeSchema.safeParse(values);
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors };
@@ -84,6 +90,7 @@ export async function contributeToGoal(id: string, values: ContributeFormValues)
     .from('goals')
     .select('current_amount, target_amount')
     .eq('id', id)
+    .eq('user_id', userId) // ownership check
     .single();
 
   if (fetchErr || !goal) return { error: { _form: ['Goal not found.'] } };
@@ -96,9 +103,10 @@ export async function contributeToGoal(id: string, values: ContributeFormValues)
   const { error } = await supabase
     .from('goals')
     .update({ current_amount: newAmount })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId); // ownership check
 
-  if (error) return { error: { _form: [error.message] } };
+  if (error) return { error: { _form: ['Failed to update goal. Please try again.'] } };
 
   revalidatePath('/goals');
   return { success: true };

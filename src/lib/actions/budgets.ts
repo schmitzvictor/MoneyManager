@@ -76,15 +76,29 @@ export async function upsertBudgetItem(
  * Delete a budget item.
  */
 export async function deleteBudgetItem(id: string) {
-  await requireUserId();
+  const userId = await requireUserId();
   const supabase = await getAuthClient();
+
+  // Ownership check: verify the budget_item belongs to the current user via budget_month
+  const { data: item } = await supabase
+    .from('budget_items')
+    .select('id, budget_months!inner(user_id)')
+    .eq('id', id)
+    .single();
+
+  // Type assertion needed because Supabase TS types don't infer joined table well here
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ownerUserId = (item as any)?.budget_months?.user_id;
+  if (!item || ownerUserId !== userId) {
+    return { error: 'Budget item not found.' };
+  }
 
   const { error } = await supabase
     .from('budget_items')
     .delete()
     .eq('id', id);
 
-  if (error) return { error: error.message };
+  if (error) return { error: 'Failed to delete budget item. Please try again.' };
 
   revalidatePath('/budget');
   return { success: true };

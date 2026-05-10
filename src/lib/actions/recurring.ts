@@ -62,7 +62,7 @@ export async function createRecurring(values: RecurringFormValues) {
 }
 
 export async function updateRecurring(id: string, values: RecurringFormValues) {
-  await requireUserId();
+  const userId = await requireUserId();
   const parsed = recurringSchema.safeParse(values);
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors };
@@ -82,33 +82,40 @@ export async function updateRecurring(id: string, values: RecurringFormValues) {
       end_date: parsed.data.end_date || null,
       auto_create: parsed.data.auto_create,
     })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId); // ownership check
 
-  if (error) return { error: { _form: [error.message] } };
+  if (error) return { error: { _form: ['Failed to update recurring series. Please try again.'] } };
 
   revalidatePath('/recurring');
   return { success: true };
 }
 
 export async function deleteRecurring(id: string) {
-  await requireUserId();
+  const userId = await requireUserId();
   const supabase = await getAuthClient();
 
-  const { error } = await supabase.from('recurring_series').delete().eq('id', id);
-  if (error) return { error: error.message };
+  const { error } = await supabase
+    .from('recurring_series')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId); // ownership check
+
+  if (error) return { error: 'Failed to delete recurring series. Please try again.' };
 
   revalidatePath('/recurring');
   return { success: true };
 }
 
 export async function markOccurrencePosted(id: string) {
-  await requireUserId();
+  const userId = await requireUserId();
   const supabase = await getAuthClient();
 
   const { data: series, error: fetchErr } = await supabase
     .from('recurring_series')
     .select('*')
     .eq('id', id)
+    .eq('user_id', userId) // ownership check
     .single();
 
   if (fetchErr || !series) return { error: 'Recurring series not found.' };
@@ -126,7 +133,7 @@ export async function markOccurrencePosted(id: string) {
     recurring_series_id: series.id,
   });
 
-  if (txErr) return { error: txErr.message };
+  if (txErr) return { error: 'Failed to post occurrence. Please try again.' };
 
   // Advance next_occurrence
   const nextDate = advanceDate(series.next_occurrence, series.frequency);
@@ -134,9 +141,10 @@ export async function markOccurrencePosted(id: string) {
   const { error: updateErr } = await supabase
     .from('recurring_series')
     .update({ next_occurrence: nextDate })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId); // ownership check
 
-  if (updateErr) return { error: updateErr.message };
+  if (updateErr) return { error: 'Failed to advance recurring series. Please try again.' };
 
   revalidatePath('/recurring');
   revalidatePath('/transactions');

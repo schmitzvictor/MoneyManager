@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { deleteAccount } from '@/lib/actions/accounts';
 import { AccountFormDialog } from '@/components/accounts/account-form-dialog';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import {
   CreditCard,
   Trash2,
   MoreVertical,
+  ExternalLink,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -58,7 +60,12 @@ export function AccountCard({ account }: { account: any }) {
             <Icon className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="font-semibold">{account.name}</h3>
+            <Link
+              href={`/accounts/${account.id}`}
+              className="font-semibold hover:underline"
+            >
+              {account.name}
+            </Link>
             <p className="text-xs text-muted-foreground">
               {ACCOUNT_LABELS[account.type as keyof typeof ACCOUNT_LABELS]}
             </p>
@@ -70,6 +77,11 @@ export function AccountCard({ account }: { account: any }) {
             <MoreVertical className="h-4 w-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => { window.location.href = `/accounts/${account.id}`; }}>
+              <ExternalLink className="mr-2 h-4 w-4" />
+              View Details
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <AccountFormDialog
               account={account}
               trigger={

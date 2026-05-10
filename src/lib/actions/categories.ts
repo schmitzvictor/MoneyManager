@@ -27,7 +27,7 @@ export async function createCategory(values: CategoryFormValues) {
   });
 
   if (error) {
-    return { error: { _form: [error.message] } };
+    return { error: { _form: ['Failed to create category. Please try again.'] } };
   }
 
   revalidatePath('/settings');
@@ -37,7 +37,7 @@ export async function createCategory(values: CategoryFormValues) {
 }
 
 export async function updateCategory(id: string, values: CategoryFormValues) {
-  await requireUserId();
+  const userId = await requireUserId();
   const parsed = categorySchema.safeParse(values);
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors };
@@ -56,10 +56,11 @@ export async function updateCategory(id: string, values: CategoryFormValues) {
       color: parsed.data.color || null,
       sort_order: parsed.data.sort_order,
     })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId); // ownership check
 
   if (error) {
-    return { error: { _form: [error.message] } };
+    return { error: { _form: ['Failed to update category. Please try again.'] } };
   }
 
   revalidatePath('/settings');
@@ -69,15 +70,19 @@ export async function updateCategory(id: string, values: CategoryFormValues) {
 }
 
 export async function deleteCategory(id: string) {
-  await requireUserId();
+  const userId = await requireUserId();
 
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const { error } = await supabase.from('categories').delete().eq('id', id);
+  const { error } = await supabase
+    .from('categories')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId); // ownership check
 
   if (error) {
-    return { error: error.message };
+    return { error: 'Failed to delete category. Please try again.' };
   }
 
   revalidatePath('/settings');

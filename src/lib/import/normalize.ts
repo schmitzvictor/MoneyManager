@@ -87,16 +87,24 @@ export function normalizeDescription(desc: string | undefined | null): string {
 }
 
 /**
- * Normalizes description for duplicate detection
+ * Generates a SHA-256 hash for deduplication of imported transactions.
+ * IMPORTANT: This function must only be called server-side (Server Actions / RSC),
+ * as it relies on Node.js `crypto`. Never import this in client components.
  */
-export function generateImportHash(account_id: string, date: string, amount: number, description: string): string {
+export function generateImportHash(
+  account_id: string,
+  date: string,
+  amount: number,
+  description: string
+): string {
+  // Lazy require so this module is safe to import on the client
+  // (the function itself should never be called client-side).
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { createHash } = require('crypto') as typeof import('crypto');
+
   const normDesc = normalizeMerchantName(description);
-  // Ensure consistent 2 decimal places for amount
   const amountStr = amount.toFixed(2);
   const raw = `${account_id}|${date}|${amountStr}|${normDesc}`;
-  
-  // We don't have crypto.subtle in some client environments synchronously,
-  // so we'll just use a simple string hash for UI-side deduplication, 
-  // or use the server side hashing later.
-  return raw;
+
+  return createHash('sha256').update(raw).digest('hex');
 }

@@ -102,8 +102,13 @@ export async function getTransactions(filters: TransactionFilters = {}) {
     query = query.lte('date', filters.endDate);
   }
   if (filters.search) {
+    // Sanitize: strip PostgREST special characters, trim, and cap length
+    const safeSearch = filters.search
+      .trim()
+      .slice(0, 100)
+      .replace(/[%_\\]/g, '\\$&'); // escape ilike wildcards
     query = query.or(
-      `description.ilike.%${filters.search}%,merchant_name.ilike.%${filters.search}%`
+      `description.ilike.%${safeSearch}%,merchant_name.ilike.%${safeSearch}%`
     );
   }
 
