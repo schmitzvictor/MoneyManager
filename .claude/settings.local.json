@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(find \"/c/Users/victo/.claude/projects/c--Users-victo-Documents-MoneyManager-MoneyManager/1c877030-cc11-4911-9bec-2ba4ae08b26d/design_bundle\" -type f 2>/dev/null | sort)",
+      "Read(//c/Users/victo/.claude/projects/c--Users-victo-Documents-MoneyManager-MoneyManager/1c877030-cc11-4911-9bec-2ba4ae08b26d/design_bundle/**)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\victo\\\\Documents\\\\MoneyManager\\\\MoneyManager\" -Force | Format-Table Name, @{Name=\"Type\"; Expression={if\\($_.PSIsContainer\\) {\"Dir\"} else {\"File\"}}} -AutoSize)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\victo\\\\Documents\\\\MoneyManager\\\\MoneyManager\\\\src\" -Recurse -Directory | ForEach-Object {$_.FullName.Replace\\('C:\\\\Users\\\\victo\\\\Documents\\\\MoneyManager\\\\MoneyManager\\\\', ''\\)} | Sort-Object)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\victo\\\\Documents\\\\MoneyManager\\\\MoneyManager\\\\node_modules\\\\next\\\\dist\\\\docs\" | Select-Object Name, @{Name=\"Type\"; Expression={if\\($_.PSIsContainer\\) {\"Dir\"} else {\"File\"}}} | Format-Table -AutoSize)",
+      "Bash(git stash *)",
+      "Bash(ls \"C:\\\\Users\\\\victo\\\\.claude\\\\projects\\\\c--Users-victo-Documents-MoneyManager-MoneyManager\\\\memory\\\\\" 2>/dev/null || echo \"no MEMORY.md\")",
+      "Read(//c/Users/victo/.claude/projects/c--Users-victo-Documents-MoneyManager-MoneyManager/memory\" 2>/dev/**)"
     ]
   }
 }
