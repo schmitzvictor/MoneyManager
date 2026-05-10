@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { transactionSchema, type TransactionFormValues } from '@/lib/validations';
 import { createTransaction, updateTransaction } from '@/lib/actions/transactions';
-import { applyRules } from '@/lib/rules/engine';
+import { applyRules } from '@/lib/rules/engine-core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

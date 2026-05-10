@@ -5,7 +5,7 @@ import { ImportDropzone } from '@/components/import/import-dropzone';
 import { ImportPreviewTable } from '@/components/import/import-preview-table';
 import { ParsedTransaction } from '@/lib/import';
 
-import { applyRulesBulk } from '@/lib/rules/engine';
+import { applyRulesBulk } from '@/lib/rules/engine-core';
 
 interface ImportClientProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
